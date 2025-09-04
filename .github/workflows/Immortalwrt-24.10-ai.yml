@@ -68,46 +68,12 @@ jobs:
       run: |
         sudo -E apt-get -qq update -y
         
-        # 彻底删除所有旧版 CMake
-        sudo -E apt-get -qq remove --purge cmake cmake-data -y
-        sudo find /usr -name "*cmake*" -exec rm -rf {} \; 2>/dev/null || true
-        sudo rm -rf /usr/local/share/cmake-*
+        # 显式安装新版 CMake（修复关键问题）
+        sudo -E apt-get -qq install -y cmake
         
-        # 安装基础编译依赖
-        sudo -E apt-get -qq install -y build-essential libssl-dev curl ca-certificates
+        # 安装其他依赖（确保脚本中包含必要的编译工具）
+        sudo -E apt-get -qq install -y $(curl -fsSL https://raw.githubusercontent.com/ham-0915/OpenWrt-N1/refs/heads/main/N1/Immortalwrt/2410)
         
-        # 下载并安装最新版 CMake (3.29.2)
-        CMAKE_VERSION="3.29.2"
-        ARCH=$(uname -m)
-        if [ "$ARCH" = "x86_64" ]; then
-            ARCH="x86_64"
-        elif [ "$ARCH" = "aarch64" ]; then
-            ARCH="aarch64"
-        else
-            echo "❌ 不支持的架构: $ARCH"
-            exit 1
-        fi
-        
-        wget -q https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-${ARCH}.sh
-        sudo sh cmake-${CMAKE_VERSION}-linux-${ARCH}.sh --skip-license --prefix=/usr/local
-        
-        # 修复链接和路径
-        sudo ln -sf /usr/local/bin/cmake /usr/bin/cmake
-        sudo ln -sf /usr/local/bin/ctest /usr/bin/ctest
-        echo "export PATH=/usr/local/bin:\$PATH" | sudo tee /etc/profile.d/cmake.sh
-        source /etc/profile.d/cmake.sh
-        
-        # 验证安装
-        cmake --version
-        if [[ $(cmake --version | grep -oP 'version \K[0-9.]+') < "3.31" ]]; then
-            echo "❌ 致命错误：CMake 版本安装失败！"
-            exit 1
-        fi
-        
-        # 安装其他依赖
-        sudo -E apt-get -qq install -y $(curl -fsSL https://raw.githubusercontent.com/woni928/My-OpenWrt/main/N1/Immortalwrt/2410)
-        
-        # 清理
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
@@ -119,9 +85,19 @@ jobs:
         # 确保 CMake 版本 ≥3.31
         cmake --version
         if [[ $(cmake --version | grep -oP 'version \K[0-9.]+') < "3.31" ]]; then
-          echo "❌ 错误：CMake 版本过低！请检查安装流程"
+          echo "❌❌ 错误：CMake 版本过低！请升级到 3.31+"
           exit 1
         fi
+
+    # ======== 关键修复开始 ========
+    - name: 安装编译依赖
+      run: |
+        sudo -E apt-get install -y \
+          libjson-c-dev \
+          libubus-dev \
+          libuci-dev \
+          libblobmsg-json-dev
+        echo "依赖安装完成"
 
     - name: 克隆源码
       working-directory: /workdir
@@ -134,6 +110,14 @@ jobs:
         echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
         echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "tag_name=$(date +%Y%m%d)" >> $GITHUB_ENV
+
+    - name: 修复 rpcd-mod-luci 路径
+      run: |
+        cd openwrt
+        # 修复JSON头文件路径问题
+        sed -i 's|/usr/include/json|/usr/include/json-c|' feeds/luci/libs/rpcd-mod-luci/CMakeLists.txt
+        echo "已修复JSON头文件路径"
+    # ======== 关键修复结束 ========
 
     - name: 加载DIY_P1
       run: |
@@ -174,13 +158,15 @@ jobs:
                 
     - name: 编译固件
       id: compile
-      env:
-        PATH: "/usr/local/bin:$PATH"  # 确保使用新安装的CMake
       run: |
         cd openwrt
         echo -e "$(nproc) thread compile"
         
-        # 使用优化的编译参数（避免内存溢出）
+        # 先编译可能失败的模块
+        echo "==== 预编译 rpcd-mod-luci ===="
+        make package/feeds/luci/rpcd-mod-luci/{clean,compile} V=s -j1 || true
+        
+        # 使用优化的编译参数
         make -j$(($(nproc) - 1)) || make -j2 || make -j1 V=s
         
         echo "status=success" >> $GITHUB_OUTPUT
