@@ -89,16 +89,6 @@ jobs:
           exit 1
         fi
 
-    # ======== 关键修复开始 ========
-    - name: 安装编译依赖
-      run: |
-        sudo -E apt-get install -y \
-          libjson-c-dev \
-          libubus-dev \
-          libuci-dev \
-          libblobmsg-json-dev
-        echo "依赖安装完成"
-
     - name: 克隆源码
       working-directory: /workdir
       run: |
@@ -232,7 +222,7 @@ jobs:
 
               更新说明：
               2025-0418：本固件所含插件，请看主页图片。
-              2025-0904：常规更新。
+              2025-0905：常规更新。
 
 
     - name: 删除运行记录
