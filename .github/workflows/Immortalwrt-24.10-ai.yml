@@ -101,14 +101,6 @@ jobs:
         echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "tag_name=$(date +%Y%m%d)" >> $GITHUB_ENV
 
-    - name: 修复 rpcd-mod-luci 路径
-      run: |
-        cd openwrt
-        # 修复JSON头文件路径问题
-        sed -i 's|/usr/include/json|/usr/include/json-c|' feeds/luci/libs/rpcd-mod-luci/CMakeLists.txt
-        echo "已修复JSON头文件路径"
-    # ======== 关键修复结束 ========
-
     - name: 加载DIY_P1
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
