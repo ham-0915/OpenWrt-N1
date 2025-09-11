@@ -79,7 +79,7 @@ jobs:
           ./scripts/feeds update -a &&
           ./scripts/feeds install -a &&
           $GITHUB_WORKSPACE/$DIY_P2_SH &&
-          sed -i 's/-march=armv8-a+crypto/-march=armv8-a/g' .config &&
+          #sed -i 's/-march=armv8-a+crypto/-march=armv8-a/g' .config &&
           make defconfig &&
           make download -j8 &&
           find dl -size -1024c -exec rm -f {} \; &&
