@@ -115,11 +115,15 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
 
-    - name: 修正 GCC 架构参数
+    - name: 强力全目录替换 CPU 架构参数
       run: |
         cd openwrt
-        find . -type f -name "Makefile" -exec sed -i 's/-march=armv8-a+crypto/-march=armv8-a/g' {} \;
-        find . -type f -name "Makefile" -exec sed -i 's/--with-arch=armv8-a+crypto/--with-arch=armv8-a/g' {} \;
+        # 替换所有相关文件中的参数
+        find . -type f -exec sed -i 's/armv8-a+crypto/armv8-a/g' {} \;
+        find . -type f -exec sed -i 's/--with-arch=armv8-a+crypto/--with-arch=armv8-a/g' {} \;
+        find . -type f -exec sed -i 's/-march=armv8-a+crypto/-march=armv8-a/g' {} \;
+        # 重新生成 config，防止缓存参数残留
+        make distclean || true
 
     - name: 下载软件包
       id: package
