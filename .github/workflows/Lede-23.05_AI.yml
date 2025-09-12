@@ -123,7 +123,7 @@ jobs:
         find . -type f -exec sed -i 's/--with-arch=armv8-a+crypto/--with-arch=armv8-a/g' {} \;
         find . -type f -exec sed -i 's/-march=armv8-a+crypto/-march=armv8-a/g' {} \;
         # 重新生成 config，防止缓存参数残留
-        make distclean || true
+        #make distclean || true
 
     - name: 下载软件包
       id: package
@@ -204,7 +204,7 @@ jobs:
               
               更新说明：
               2025-0418：本固件所含插件，请看主页图片。
-              2025-0912：同步上游的更新-ai。
+              2025-0912：同步上游的更新-ai-2。
 
     - name: 删除运行记录
       uses: Mattraks/delete-workflow-runs@main
