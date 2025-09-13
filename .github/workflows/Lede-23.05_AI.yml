@@ -1,4 +1,4 @@
-name: Lede-23.05-AI
+name: Lede-23.05-ai
 
 on:
   repository_dispatch:
@@ -11,7 +11,7 @@ env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
   FEEDS_CONF: N1/Lede/LE-feeds.conf.default
-  CONFIG_FILE: N1/Lede/2025-0416.config
+  CONFIG_FILE: N1/Lede/2025-0912.config
   DIY_P1_SH: N1/Lede/diy-part1.sh
   DIY_P2_SH: N1/Lede/diy-part2.sh
   FILES: N1/Lede/files
@@ -20,7 +20,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: 创建编译空间挂载点
@@ -93,6 +93,8 @@ jobs:
         echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
         echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "tag_name=$(date +%Y%m%d)" >> $GITHUB_ENV
+        # 清理bin目录
+        rm -rf bin
 
     - name: 加载DIY_P1
       run: |
@@ -114,16 +116,8 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
-
-    - name: 强力全目录替换 CPU 架构参数
-      run: |
-        cd openwrt
-        # 替换所有相关文件中的参数
-        find . -type f -exec sed -i 's/armv8-a+crypto/armv8-a/g' {} \;
-        find . -type f -exec sed -i 's/--with-arch=armv8-a+crypto/--with-arch=armv8-a/g' {} \;
-        find . -type f -exec sed -i 's/-march=armv8-a+crypto/-march=armv8-a/g' {} \;
-        # 重新生成 config，防止缓存参数残留
-        #make distclean || true
+        # 再次清理bin目录
+        rm -rf bin
 
     - name: 下载软件包
       id: package
@@ -154,8 +148,8 @@ jobs:
         df -hT
         mkdir openwrt-armvirt
         mkdir /workdir/upload
-        cp openwrt/bin/targets/*/*/*.tar.gz /workdir/upload/
-        mv openwrt/bin/targets/*/*/*.tar.gz openwrt-armvirt/
+        cp openwrt/bin/targets/armvirt/64/*.tar.gz /workdir/upload/
+        mv openwrt/bin/targets/armvirt/64/*.tar.gz openwrt-armvirt/
         echo -e "\n"
         echo "列出空间占用前10的目录或文件："
         sudo du -h --max-depth=1 /workdir |sort -nr | head -10
@@ -204,7 +198,7 @@ jobs:
               
               更新说明：
               2025-0418：本固件所含插件，请看主页图片。
-              2025-0912：同步上游的更新-ai-2。
+              2025-0912：同步上游的更新-ai
 
     - name: 删除运行记录
       uses: Mattraks/delete-workflow-runs@main
