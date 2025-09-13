@@ -38,7 +38,7 @@ git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/l
 #sed -i 's#SYNC#SYNC -D_LARGEFILE64_SOURCE#g' feeds/packages/utils/xfsprogs/Makefile
 sed -i 's/REENTRANT -D_GNU_SOURCE/LARGEFILE64_SOURCE/g' feeds/packages/lang/perl/perlmod.mk
 sed -i 's#GO_PKG_TARGET_VARS.*# #g' feeds/packages/utils/v2dat/Makefile
-sed -i 's/ip_route_output(/ip_route_output_key(/g' feeds/telephony/net/rtpengine/kernel-module/xt_RTPENGINE.c
+#sed -i 's/ip_route_output(/ip_route_output_key(/g' feeds/telephony/net/rtpengine/kernel-module/xt_RTPENGINE.c
 
 # 修复v2ray-plugin编译失败
 rm -rf feeds/luci/applications/luci-app-mosdns
