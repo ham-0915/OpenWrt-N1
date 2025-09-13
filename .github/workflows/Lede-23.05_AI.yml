@@ -93,8 +93,9 @@ jobs:
         echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
         echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "tag_name=$(date +%Y%m%d)" >> $GITHUB_ENV
-        # 清理bin目录
-        rm -rf bin
+        # 只保留armvirt/64目录
+        rm -rf bin/targets/*
+        mkdir -p bin/targets/armvirt/64
 
     - name: 加载DIY_P1
       run: |
@@ -116,8 +117,9 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
-        # 再次清理bin目录
-        rm -rf bin
+        # 再次确定只保留armvirt/64目录
+        rm -rf bin/targets/*
+        mkdir -p bin/targets/armvirt/64
 
     - name: 下载软件包
       id: package
@@ -198,7 +200,7 @@ jobs:
               
               更新说明：
               2025-0418：本固件所含插件，请看主页图片。
-              2025-0912：同步上游的更新-ai
+              2025-0913：同步上游的更新-ai
 
     - name: 删除运行记录
       uses: Mattraks/delete-workflow-runs@main
