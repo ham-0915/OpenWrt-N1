@@ -150,8 +150,8 @@ jobs:
         df -hT
         mkdir openwrt-armvirt
         mkdir /workdir/upload
-        cp openwrt/bin/targets/armvirt/64/*.tar.gz /workdir/upload/
-        mv openwrt/bin/targets/armvirt/64/*.tar.gz openwrt-armvirt/
+        cp openwrt/bin/targets/*/*/*.tar.gz /workdir/upload/
+        mv openwrt/bin/targets/*/*/*.tar.gz openwrt-armvirt/
         echo -e "\n"
         echo "列出空间占用前10的目录或文件："
         sudo du -h --max-depth=1 /workdir |sort -nr | head -10
