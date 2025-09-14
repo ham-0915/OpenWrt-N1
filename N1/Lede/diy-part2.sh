@@ -5,6 +5,9 @@
 #sed -i 's/192.168.1.1/192.168.123.2/g' package/base-files/files/bin/config_generate
 sed -i 's/192.168.1.1/192.168.123.2/g' package/base-files/luci2/bin/config_generate
 
+sed -i '1i src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
+sed -i '2i src-git small https://github.com/kenzok8/small' feeds.conf.default
+
 # 修改主机名
 #sed -i 's/LEDE/OpenWrt/g' package/base-files/files/bin/config_generate
 sed -i 's/LEDE/OpenWrt/g' package/base-files/luci2/bin/config_generate
