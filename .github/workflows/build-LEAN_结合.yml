@@ -257,6 +257,7 @@ jobs:
           IP: 192.168.123.2
           账户: root
           密码: password
+          再次测试有无晶振宝盒  nikki等是否最新版本
           
     # 步骤17：删除旧的 Release，只保留最新的 10 个
     - name: Delete old releases
