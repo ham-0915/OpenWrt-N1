@@ -16,6 +16,11 @@ sed -i 's/<%:Down%>/<%:Move down%>/g' feeds/luci/modules/luci-compat/luasrc/view
 # 拉取源码
 git clone https://github.com/gdy666/luci-app-lucky.git package/lucky
 git clone https://github.com/sbwml/luci-app-openlist2 package/openlist
+rm -rf feeds/packages/net/v2ray-geodata
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
+git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
+rm -rf package/luci-app-amlogic
+git clone https://github.com/ophub/luci-app-amlogic.git package/luci-app-amlogic
 
 
 # passwall官方方法：移除 openwrt feeds 自带的核心库
