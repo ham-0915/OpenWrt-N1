@@ -1,0 +1,270 @@
+# 工作流的名称，显示在 GitHub Actions 页面中
+name: Build OpenWRT-LEAN for N1-结合
+
+# 定义工作流的触发条件
+on:
+  # 允许手动触发工作流（在 GitHub Actions 页面点击按钮运行）
+  workflow_dispatch:
+
+# 设置全局环境变量
+env:
+  REPO_URL: https://github.com/coolsnowwolf/lede
+  REPO_BRANCH: master
+  FEEDS_CONF: N1/Lede/LE-feeds.conf.default
+  CONFIG_FILE: N1/Lede/20250914-mini.config
+  DIY_SH: N1/Lede/diy-part2.sh
+  FILES: N1/Lede/files
+  TZ: Asia/Shanghai
+  GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
+
+# 定义工作流中的任务
+jobs:
+  # 任务名为 build
+  build:
+    # 指定运行环境为 Ubuntu 22.04
+    runs-on: ubuntu-22.04
+
+    # 定义任务中的步骤
+    steps:
+    # 步骤1：检查机器配置信息
+    - name: Check machine configuration
+      run: |
+        echo "警告⚠"
+        echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
+        echo "云编译建议取消勾选Node.js及其相关插件！"
+        echo "已知CPU型号（降序）：7763,8370C,8272CL,8171M,E5系列"
+        echo "--------------------------CPU信息--------------------------"
+        echo "CPU物理数量:$(cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l)"
+        echo -e "CPU核心及版本信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+        echo "--------------------------内存信息--------------------------"
+        echo "已安装内存详细信息："
+        sudo lshw -short -C memory | grep GiB
+        echo -e "\n"
+        echo "--------------------------硬盘信息--------------------------"
+        echo -e  "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l) \n"
+        echo "硬盘详情："
+        df -Th
+        
+    # 步骤2：显示清理磁盘空间前的磁盘使用情况
+    - name: Before freeing up disk space
+      run: |
+        echo "Before freeing up disk space"
+        echo "=============================================================================="
+        df -hT
+        echo "=============================================================================="
+
+    # 步骤3：使用第三方 Action 优化磁盘空间
+    - name: "Optimize Disk Space"
+      # 使用 hugoalh/disk-space-optimizer-ghaction 动作，版本 v0.8.1
+      uses: "hugoalh/disk-space-optimizer-ghaction@v0.8.1"
+      with:
+        # 使用 sudo 权限
+        operate_sudo: "True"
+        # 通用优化：包含所有项目
+        general_include: ".+"
+        # 排除 GCC、G++、Clang、LLVM 等编译工具，避免影响编译
+        general_exclude: |-
+          ^GCC$
+          ^G\+\+$
+          Clang
+          LLVM
+        # 清理 Docker：包含所有项目
+        docker_include: ".+"
+        # 清理未使用的 Docker 资源（如容器、镜像、网络等）
+        docker_prune: "True"
+        docker_clean: "True"
+        # 清理 APT (包管理器) 缓存
+        apt_prune: "True"
+        apt_clean: "True"
+        # 清理 Homebrew (macOS 包管理器，在 Ubuntu 上可能不适用但无害) 缓存
+        homebrew_prune: "True"
+        homebrew_clean: "True"
+        # 清理 npm (Node.js 包管理器) 缓存
+        npm_prune: "True"
+        npm_clean: "True"
+        # 清理操作系统交换空间
+        os_swap: "True"
+
+    # 步骤4：使用另一个 Action 进一步最大化构建空间
+    - name: Freeing up disk space
+      uses: easimon/maximize-build-space@master
+      with: 
+        # 为根分区保留 10240 MB 的空间
+        root-reserve-mb: 10240
+        # 设置交换空间为 1 MB (基本等于禁用)
+        swap-size-mb: 1
+        # 移除 .NET 相关组件
+        remove-dotnet: 'true'
+        # 移除 Android 相关组件
+        remove-android: 'true'
+        # 移除 Haskell 相关组件
+        remove-haskell: 'true'
+        # 移除 CodeQL (代码分析工具) 相关组件
+        remove-codeql: 'true'
+        # 移除 Docker 镜像
+        remove-docker-images: 'true'
+
+    # 步骤5：显示清理磁盘空间后的磁盘使用情况
+    - name: Free up disk space complete
+      run: |
+        echo "Free up disk space complete"
+        echo "=============================================================================="
+        df -hT
+        echo "=============================================================================="
+        
+    # 步骤6：检出当前仓库的代码（包含 .config, diy.sh, files 等自定义文件）
+    - name: Checkout
+      uses: actions/checkout@main
+      
+    # 步骤7：初始化编译环境，安装必要的依赖包
+    - name: Initialize environment
+      env:
+        # 设置 apt 为非交互模式，避免安装过程中提示
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt update
+        # 安装依赖包，依赖列表从一个 URL 获取
+        sudo -E apt -y install $(curl -fsSL https://raw.githubusercontent.com/ham-0915/OpenWrt-N1/refs/heads/main/N1/Lede/2305)
+        # 自动移除不再需要的包
+        sudo -E apt -y autoremove --purge
+        # 额外安装一些编译所需的包
+        sudo -E apt -y install libfuse-dev
+        sudo -E apt -y install rename
+        sudo -E apt -y install time
+        sudo -E apt -y install gn
+        # 重新加载系统守护进程配置
+        sudo -E systemctl daemon-reload
+        # 清理 apt 缓存
+        sudo -E apt clean
+        # 设置时区
+        sudo timedatectl set-timezone "$TZ"
+        # 更改工作空间目录的所有者为当前用户，避免权限问题
+        sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
+
+    # 步骤8：克隆 OpenWRT 源代码
+    - name: Clone source code
+      working-directory: ./
+      run: |
+        df -hT $PWD
+        git clone $REPO_URL -b $REPO_BRANCH openwrt
+        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+        cd openwrt
+        useVersionInfo=$(git show -s --date=short --format="date: %cd<br/>commit: %s<br/>commit hash: %H")
+        echo "useVersionInfo=$useVersionInfo" >> $GITHUB_ENV
+        echo "DATE=$(date "+%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+        echo "tag_name=$(date +%Y%m%d)" >> $GITHUB_ENV
+
+    # 步骤9：缓存编译目录，加速后续编译（如果缓存命中）
+    - name: cache wrt build
+      # 使用第三方 Action 来缓存 OpenWRT 编译目录
+      uses: stupidloud/cachewrtbuild@main
+      with:
+        # 启用 ccache（编译缓存）
+        ccache: 'true'
+        # 设置缓存键的一部分，这里使用分支名和 soc 型号
+        mixkey: amlogic-${{ env.REPO_BRANCH }}
+        # 指定要缓存的目录
+        prefix: ${{ github.workspace }}/openwrt
+        
+    # 步骤10：更新并安装 feeds（软件源）
+    - name: Update & Install feeds
+      working-directory: ./openwrt
+      run: |
+        # 更新所有 feeds
+        ./scripts/feeds update -a
+        # 安装所有 feeds 中的软件包
+        ./scripts/feeds install -a
+
+    # 步骤11：加载自定义配置和文件
+    - name: Load custom config
+      run: |
+        # 如果存在自定义文件目录，则移动到 openwrt 目录
+        [ -e $FILES ] && mv $FILES openwrt/files
+        # 如果存在配置文件，则移动到 openwrt 目录
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        # 为自定义脚本添加执行权限
+        chmod +x $DIY_SH
+        cd openwrt
+        # 执行自定义脚本，进行最后的配置调整
+        $GITHUB_WORKSPACE/$DIY_SH
+
+
+    # 步骤13：下载编译所需的软件包
+    - name: Download package
+      working-directory: ./openwrt
+      run: |
+        # 根据当前配置生成默认配置
+        make defconfig
+        # 使用 8 个线程并行下载所需的软件包
+        make download -j8
+        # 查找并列出小于 1KB 的文件（可能是下载失败的空文件）
+        find dl -size -1024c -exec ls -l {} \;
+        # 删除这些小于 1KB 的文件，强制下次重新下载
+        find dl -size -1024c -exec rm -f {} \;
+
+    # 步骤14：编译固件
+    - name: Compile the firmware
+      run: |
+        # 确保 openwrt 目录有正确的权限
+        chmod -R 755 openwrt
+        cd openwrt
+        echo -e "$(nproc) thread compile"
+        # 尝试编译：先使用最大线程数，失败则使用单线程，再失败则使用单线程并显示详细输出
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        # 如果编译成功，设置环境变量 compile_status 为 success
+        echo "compile_status=success" >> $GITHUB_ENV
+
+    # 步骤15：打包编译好的 OpenWrt 固件（仅在编译成功且任务未被取消时运行）
+    - name: Package OpenWrt Firmware
+      if: ${{ env.compile_status }} == 'success' && !cancelled()
+      # 使用第三方 Action 将根文件系统打包成 N1 可用的镜像
+      uses: unifreq/openwrt_packit@master
+      env:
+        # 指定 OpenWRT 编译输出的根文件系统路径
+        OPENWRT_ARMVIRT: openwrt/bin/targets/*/*/openwrt-amlogic-mesongx-phicomm_n1-rootfs.tar.gz
+        # 指定内核版本
+        KERNEL_VERSION_NAME: 6.6.y
+        # 不自动查找最新内核
+        KERNEL_AUTO_LATEST: true
+        # 指定 SoC 型号为 s905d (N1 的芯片)
+        PACKAGE_SOC: s905d
+        # 设置镜像中的用户名
+        WHOAMI: ham
+        # 启用软件流量卸载
+        SW_FLOWOFFLOAD: 1
+        # 禁用 SFE 流量加速
+        SFE_FLOW: 0
+       
+    # 步骤16：将打包好的固件上传到 GitHub Release（仅在打包成功且任务未被取消时运行）
+    - name: Upload OpenWrt Firmware to Release
+      uses: ncipollo/release-action@main
+      # 假设 PACKAGED_STATUS 是上一个 Action 设置的成功状态
+      if: ${{ env.PACKAGED_STATUS == 'success' }} && !cancelled()
+      with:
+        name: OpenWrt-N1 → ${{ env.DATE }}
+        tag: N1-23.05_${{ env.tag_name }}
+        # 指定要上传的制品路径（打包 Action 的输出文件）
+        artifacts: /opt/openwrt_packit/output/*
+        # 允许更新已存在的 Release
+        allowUpdates: true
+        # 使用 GitHub Token 进行认证
+        token: ${{ secrets.GITHUB_TOKEN }}
+        # Release 的说明正文
+        body: |
+          基于lean openwrt构建
+          首次使用建议全新刷写
+          * 基本信息
+          IP: 192.168.123.2
+          账户: root
+          密码: password
+          
+    # 步骤17：删除旧的 Release，只保留最新的 10 个
+    - name: Delete old releases
+      uses: dev-drprasad/delete-older-releases@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        # 保留最新的 10 个 Release
+        keep_latest: 10
+        # 同时删除与 Release 关联的 Git 标签
+        delete_tags : true
