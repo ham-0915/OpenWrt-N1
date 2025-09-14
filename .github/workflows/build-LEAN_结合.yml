@@ -244,7 +244,7 @@ jobs:
       if: ${{ env.PACKAGED_STATUS == 'success' }} && !cancelled()
       with:
         name: OpenWrt-N1 → ${{ env.DATE }}
-        tag: N1-23.05_${{ env.tag_name }}
+        tag: N1-bh23.05_${{ env.tag_name }}
         # 指定要上传的制品路径（打包 Action 的输出文件）
         artifacts: /opt/openwrt_packit/output/*
         # 允许更新已存在的 Release
