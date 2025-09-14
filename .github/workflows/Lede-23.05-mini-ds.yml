@@ -1,4 +1,4 @@
-name: Lede-23.05-mini
+name: Lede-23.05-mini-ds
 
 on:
   repository_dispatch:
