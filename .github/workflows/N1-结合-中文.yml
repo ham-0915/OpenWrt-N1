@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: 查看服务器配置
+    - name: 服务器配置
       run: |
         echo "警告⚠"
         echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
@@ -43,7 +43,7 @@ jobs:
         df -hT
         echo "=============================================================================="
 
-    - name: "Optimize Disk Space"
+    - name: 优化磁盘空间
       uses: "hugoalh/disk-space-optimizer-ghaction@v0.8.1"
       with:
         operate_sudo: "True"
@@ -85,7 +85,7 @@ jobs:
     - name: 检测流程代码
       uses: actions/checkout@main
       
-    - name: 安装所需的依赖
+    - name: 安装所需依赖
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -101,7 +101,7 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
 
-    - name: 克隆源码并加载default文件
+    - name: 克隆源码
       working-directory: ./
       run: |
         df -hT $PWD
@@ -141,7 +141,7 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: 加载config跟自定义文件
+    - name: 加载自定义文件
       run: |
         [ -e $FILES ] && mv $FILES openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
