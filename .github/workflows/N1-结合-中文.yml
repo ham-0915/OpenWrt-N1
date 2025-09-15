@@ -202,4 +202,3 @@ jobs:
       with:
         keep_latest: 10
         delete_tags : true
-		
