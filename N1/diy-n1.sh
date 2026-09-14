@@ -54,7 +54,7 @@ git clone --depth=1 https://github.com/Openwrt-Passwall/openwrt-passwall2.git pa
 log "克隆第三方插件"
 git clone --depth=1 https://github.com/ophub/luci-app-amlogic package/amlogic
 # git clone --depth=1 https://github.com/vernesong/OpenClash package/openclash
-git clone --depth=1 https://github.com/kenzok8/openwrt-clashoo.git package/openwrt-clashoo
+# git clone --depth=1 https://github.com/kenzok8/openwrt-clashoo.git package/openwrt-clashoo
 
 git clone --depth=1 https://github.com/nikkinikki-org/OpenWrt-nikki package/nikki
 # ── nikki 自定义三处设置为‘不修改’ ─────────────────────────────
