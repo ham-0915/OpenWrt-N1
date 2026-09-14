@@ -1,4 +1,4 @@
-name: N1-Build
+name: N1-Build-Test
 
 on:
   schedule:
@@ -32,7 +32,7 @@ jobs:
     timeout-minutes: 360
     permissions:
       actions: write
-      contents: write
+      contents: read
     env:
       TAG: ${{ matrix.tag }}
       BRANCH: ${{ matrix.branch }}
@@ -191,104 +191,33 @@ jobs:
         KERNEL_USAGE: flippy
         KERNEL_VERSION_NAME: ${{ matrix.kernel }}
 
-    - name: 整理并重命名打包产物
+    - name: 整理产物与附加日志
       if: steps.ver.outputs.run == 'true' && steps.compile.outputs.status == 'success'
       run: |
-        echo "::group::区分并重命名文件"
+        echo "::group::整理测试产物"
+        # 1. 区分固件文件名
         cd /opt/openwrt_packit/output/
         for file in openwrt*; do
           if [ -f "$file" ]; then
             mv "$file" "${TAG}_${file}"
           fi
         done
+        
+        # 2. 复制日志文件到打包目录
+        if [ -f "$GITHUB_WORKSPACE/N1/logs.txt" ]; then
+          cp "$GITHUB_WORKSPACE/N1/logs.txt" ./build-log.txt
+        else
+          echo "编译时间: $(date '+%Y-%m-%d %H:%M')" > ./build-log.txt
+          echo "当前版本分支: ${BRANCH}" >> ./build-log.txt
+        fi
+        
         ls -lh /opt/openwrt_packit/output/
         echo "::endgroup::"
 
-    - name: 上传产物
+    - name: 上传测试固件及日志
       if: steps.ver.outputs.run == 'true' && steps.compile.outputs.status == 'success'
       uses: actions/upload-artifact@v4
       with:
         name: openwrt-${{ matrix.tag }}
         path: /opt/openwrt_packit/output/*
-        retention-days: 1
-
-
-  release:
-    needs: build
-    if: always() && needs.build.result != 'cancelled'
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: write
-      contents: write
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        sparse-checkout: N1/logs.txt
-
-    - name: 下载所有产物
-      uses: actions/download-artifact@v4
-      with:
-        path: /tmp/artifacts
-        pattern: openwrt-*
-        merge-multiple: true
-
-    - name: 检查产物
-      id: check
-      run: |
-        if [ -z "$(ls -A /tmp/artifacts 2>/dev/null)" ]; then
-          echo "has_artifacts=false" >> "$GITHUB_OUTPUT"
-        else
-          echo "has_artifacts=true" >> "$GITHUB_OUTPUT"
-          echo "固件列表："
-          ls -lh /tmp/artifacts/
-        fi
-
-    - name: 生成 Release 描述
-      if: steps.check.outputs.has_artifacts == 'true'
-      id: release
-      run: |
-        TAG_NAME="N1_$(date +%Y%m%d)"
-        DATE="$(date '+%Y-%m-%d %H:%M')"
-        VERSIONS=$(ls /tmp/artifacts/ | sed 's/openwrt-//' | tr '\n' '、' | sed 's/、$//')
-        {
-          echo "- **官方源码**: https://github.com/immortalwrt/immortalwrt"
-          echo "- **网关信息**: 192.168.123.2 | **账户**: root | **密码**: password"
-          echo "- **编译时间**: $DATE"
-          echo ""
-          echo "### 更新日志"
-          [ -f "N1/logs.txt" ] && cat "N1/logs.txt" || echo "- 常规更新"
-        } > /tmp/desc.txt
-        echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
-        echo "标签: $TAG_NAME"
-
-    - name: 发布 Release
-      if: steps.check.outputs.has_artifacts == 'true'
-      uses: ncipollo/release-action@v1
-      with:
-        name: "OpenWrt-N1"
-        tag: ${{ steps.release.outputs.tag }}
-        artifacts: /tmp/artifacts/*
-        allowUpdates: true
-        token: ${{ secrets.GITHUB_TOKEN }}
-        bodyFile: /tmp/desc.txt
-
-    - name: 清理旧 Release
-      if: steps.check.outputs.has_artifacts == 'true'
-      uses: dev-drprasad/delete-older-releases@master
-      with:
-        keep_latest: 5
-        delete_tags: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: 清理旧记录
-      uses: Mattraks/delete-workflow-runs@v2
-      with:
-        retain_days: 5
-        keep_minimum_runs: 10
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: 删除临时 Artifacts 产物
-      uses: geekyeggo/delete-artifact@v5
-      with:
-        name: openwrt-*
+        retention-days: 7
