@@ -37,8 +37,10 @@ for pkg in "${PASSWALL_PKGS[@]}"; do rm -rf "feeds/packages/net/$pkg"; done
 rm -rf feeds/luci/applications/luci-app-{lucky,mosdns,nikki,openclash,openlist,openlist2,passwall,passwall2} \
   feeds/packages/net/{mosdns,openlist}
 
-# 25.12 去除 dockerman （代码示例）
-#[ "$VERSION" = "25.12" ] && sed -i '/CONFIG_PACKAGE_luci-app-dockerman/d' .config 2>/dev/null || true
+# 如果 25.12 或 24.10 去除 dockerman  （代码示例）
+#[ "$VERSION" = "25.12" ] && sed -i '/CONFIG_PACKAGE_luci-app-dockerman/d' .config
+[ "$VERSION" = "24.10" ] && sed -i '/CONFIG_PACKAGE_luci-app-dockerman/d' .config
+#[ "$VERSION" = "24.10" ] && sed -i '/CONFIG_PACKAGE_luci-app-dockerman/d' .config 2>/dev/null || true
 
 # ============================================================
 # 克隆 Passwall 2
