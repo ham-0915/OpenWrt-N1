@@ -37,10 +37,30 @@ for pkg in "${PASSWALL_PKGS[@]}"; do rm -rf "feeds/packages/net/$pkg"; done
 rm -rf feeds/luci/applications/luci-app-{lucky,mosdns,nikki,openclash,openlist,openlist2,passwall,passwall2} \
   feeds/packages/net/{mosdns,openlist}
 
-# 如果 25.12 或 24.10 去除 dockerman  （代码示例）
-#[ "$VERSION" = "25.12" ] && sed -i '/CONFIG_PACKAGE_luci-app-dockerman/d' .config
-[ "$VERSION" = "24.10" ] && sed -i '/CONFIG_PACKAGE_luci-app-dockerman/d' .config
-#[ "$VERSION" = "24.10" ] && sed -i '/CONFIG_PACKAGE_luci-app-dockerman/d' .config 2>/dev/null || true
+# 24.10 修复 containerd 编译：klauspost/cpuid/v2 v2.0.4 使用 //go:linkname
+# 引用 runtime.sched_getaffinity，在 Go 1.24+ 中已废弃，改用 syscall
+[ "$VERSION" = "24.10" ] && {
+  log "24.10 修复 containerd cpuid Go 1.24+ 兼容"
+  cat >> feeds/packages/utils/containerd/Makefile << 'CPEOF'
+
+# Patch: klauspost/cpuid/v2 v2.0.4 uses //go:linkname to runtime.sched_getaffinity
+# which is removed in Go 1.24+. Replace with syscall.SchedGetaffinity.
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	cd $(PKG_BUILD_DIR)/vendor/github.com/klauspost/cpuid/v2 && \
+		sed -i \
+			-e 's/"unsafe"/"syscall"/' \
+			-e '/\/\/go:noescape/d' \
+			-e '/\/\/go:linkname sched_getaffinity/d' \
+			-e '/^func sched_getaffinity/d' \
+			-e 's/r := sched_getaffinity(0, unsafe\.Sizeof(buf), &buf\[0\])/rlen, err := syscall.SchedGetaffinity(0, buf[:])/' \
+			-e 's/if r < 0/if err != nil/' \
+			-e 's/buf\[:r\]/buf[:rlen]/' \
+			os_linux_arm64.go && \
+		grep -q 'syscall.SchedGetaffinity' os_linux_arm64.go
+endef
+CPEOF
+}
 
 # ============================================================
 # 克隆 Passwall 2
