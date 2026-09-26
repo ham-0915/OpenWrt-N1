@@ -1,2 +1,2 @@
 - 同步上游更新，去除 luci-app-OpenClash 插件。
-- 恢复 Docker 插件，同步上游更新。
+- 同步上游更新。
