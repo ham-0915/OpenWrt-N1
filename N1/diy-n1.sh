@@ -40,8 +40,8 @@ rm -rf feeds/luci/applications/luci-app-{lucky,mosdns,nikki,openclash,openlist,o
 # 如果 25.12 或 24.10 去除 dockerman  （代码示例）
 #[ "$VERSION" = "25.12" ] && sed -i '/CONFIG_PACKAGE_luci-app-dockerman/d' .config
 [ "$VERSION" = "24.10" ] && sed -i '/CONFIG_PACKAGE_luci-app-dockerman/d' .config
-#
- ============================================================
+
+#  ============================================================
 # 克隆 Passwall 2
 # ============================================================
 log "克隆 Passwall 2"
